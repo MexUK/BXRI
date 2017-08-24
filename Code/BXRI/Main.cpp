@@ -30,15 +30,34 @@ for all .h and .cpp files:
 
 for all #include lines in the file:
 
-if "blah" from #include "some/path/blah.h" is not found in the .h file (or maybe .cpp file too)
+if "blah" from #include "some/path/blah.h" is not found in the .h file or .cpp file
 
-then the #include line is not needed
+then the #include line is marked as not needed
 
 */
 
 void detectRedundantIncludes(void)
 {
-	cout << "\nBXRI - BX Redundant Include Checker - by Mex\n\n";
+	map<string, bool> mapSkipIncludes;
+	bool bSkipAngleBracketIncludes;
+
+	// -------------- settings start --------------
+
+	bSkipAngleBracketIncludes = true; // e.g. Skip <Windows.h> instead of "Windows.h"
+	mapSkipIncludes["Type/Types.h"] = true;
+
+	// --------------- settings end ---------------
+
+	cout << "\n";
+
+	cout << "-------------------------- BXRI --------------------------\n";
+	cout << "-------------------------- BX Redundant Include Checker --\n";
+	cout << "-------------------------- by Mex ------------------------\n\n";
+
+	cout << "This tool checks for:\n";
+	cout << "- Redundant Includes\n";
+	cout << "- Duplicate Includes\n\n";
+
 	cout << "Enter a folder path:\n\n";
 
 	char szFolderPathIn[MAX_PATH];
@@ -56,11 +75,22 @@ void detectRedundantIncludes(void)
 			return;
 		}
 	}
+	cout << "\n\n";
 
 	vector<string>
-		vecFilePaths = CFile::getFilePaths(szFolderPathIn, true, false, "h,cpp", true);
+		vecFilePaths = CFile::getFilePaths(szFolderPathIn, true, false, "h,hpp,c,cpp", true);
 	map<string, vector<string>>
-		mapRedundantIncludes;
+		mapRedundantIncludes,
+		mapDuplicateIncludes;
+	map<string, vector<string>>
+		mapOppositeExtensions;
+	string
+		strFilePath2;
+
+	mapOppositeExtensions["C"] = { "H", "HPP" };
+	mapOppositeExtensions["CPP"] = { "HPP", "H" };
+	mapOppositeExtensions["H"] = { "C", "CPP" };
+	mapOppositeExtensions["HPP"] = { "CPP", "C" };
 
 	for (string& strFilePath : vecFilePaths)
 	{
@@ -68,7 +98,7 @@ void detectRedundantIncludes(void)
 		vector<string> vecFileLines = CString2::split(strFileContent, "\n");
 		for (string& strFileLine : vecFileLines)
 		{
-			string strFileLineClean = CString2::ltrim(strFileLine);
+			string strFileLineClean = CString2::trim(strFileLine);
 			if (strFileLineClean.substr(0, 8) == "#include")
 			{
 				int32 iQuoteStartIndex, iQuoteEndIndex;
@@ -76,11 +106,24 @@ void detectRedundantIncludes(void)
 				if (iQuoteStartIndex == -1)
 				{
 					iQuoteStartIndex = strFileLineClean.find('<', 0);
-					iQuoteEndIndex = strFileLineClean.find('>', iQuoteStartIndex + 1);
+					if (iQuoteStartIndex != -1)
+					{
+						if (bSkipAngleBracketIncludes)
+						{
+							continue;
+						}
+						iQuoteEndIndex = strFileLineClean.find('>', iQuoteStartIndex + 1);
+					}
 				}
 				else
 				{
 					iQuoteEndIndex = strFileLineClean.find('"', iQuoteStartIndex + 1);
+				}
+
+				string strIncludeLineClean = strFileLineClean.substr(0, iQuoteEndIndex);
+				if (strIncludeLineClean == "")
+				{
+					continue;
 				}
 
 				string strIncludePath = strFileLineClean.substr(iQuoteStartIndex + 1, (iQuoteEndIndex - iQuoteStartIndex) - 1);
@@ -101,67 +144,116 @@ void detectRedundantIncludes(void)
 					continue;
 				}
 
-				bool
-					bFirstFileIsHeaderFile = CString2::toUpperCase(CPath::getFileExtension(strFilePath)) == "H",
-					bSecondFileIsHeaderFile = !bFirstFileIsHeaderFile;
-				uint32
-					uiSearchStartIndex = 0;
-				bool
-					bFoundInAFilePair = false;
-
-				// file 1
-				if (bFirstFileIsHeaderFile)
+				if (mapSkipIncludes.count(strIncludePath) == 1 && mapSkipIncludes[strIncludePath] == true)
 				{
-					uiSearchStartIndex = strFileContent.rfind("#include");
-					if (uiSearchStartIndex != -1)
-					{
-						uiSearchStartIndex = strFileContent.find("\n", uiSearchStartIndex + 1);
-						if (uiSearchStartIndex != -1)
-						{
-							uiSearchStartIndex++;
-						}
-					}
+					continue;
 				}
 
-				if (CString2::isIn(strFileContent, strFileNameNoExt, true, uiSearchStartIndex))
-				{
-					bFoundInAFilePair = true;
-				}
 
-				// file 2
-				uiSearchStartIndex = 0;
 				string
-					strSecondFileExtension = bFirstFileIsHeaderFile ? "cpp" : "h",
-					strSecondFilePath = CPath::replaceFileExtensionWithCase(strFilePath, strSecondFileExtension),
-					strSecondFileContent = CFile::getFileContent(strSecondFilePath);
+					strExtUpper = CString2::toUpperCase(CPath::getFileExtension(strFilePath));
+				bool
+					bFileIsHeaderFile = strExtUpper == "H" || strExtUpper == "HPP",
+					bIncludeIsUsed = false,
+					bFile1IsHeaderFile = bFileIsHeaderFile;
+				uint32
+					uiFileHitCount = 0,
+					uiHitCount = 0;
+				map<uint32, bool>
+					mapFilesHitFound;
+				
+				mapFilesHitFound[0] = false;
+				mapFilesHitFound[1] = false;
 
-				if (bSecondFileIsHeaderFile)
+				for (uint32 i = 0; i < 2; i++)
 				{
-					uiSearchStartIndex = strSecondFileContent.rfind("#include");
-					if (uiSearchStartIndex != -1)
+					// header or source file
+					uint32 uiSearchStartIndex = 0;
+
+					if (bFileIsHeaderFile)
 					{
-						uiSearchStartIndex = strSecondFileContent.find("\n", uiSearchStartIndex + 1);
+						// header file
+						uiSearchStartIndex = strFileContent.rfind("#include");
 						if (uiSearchStartIndex != -1)
 						{
-							uiSearchStartIndex++;
+							uiSearchStartIndex = strFileContent.find("\n", uiSearchStartIndex + 1);
+							if (uiSearchStartIndex != -1)
+							{
+								uiSearchStartIndex++;
+							}
 						}
 					}
+
+					if (CString2::isIn(strFileContent, strFileNameNoExt, true, uiSearchStartIndex))
+					{
+						bIncludeIsUsed = true;
+					}
+
+					uint32 uiHitCountInFile = CString2::getHitCount(strFileContent, strIncludeLineClean, false, 0);
+					if (uiHitCountInFile > 0)
+					{
+						uiFileHitCount++;
+						uiHitCount += uiHitCountInFile;
+						mapFilesHitFound[i] = true;
+					}
+
+					strFilePath2 = CPath::replaceFileExtensionWithCase(strFilePath, mapOppositeExtensions[strExtUpper][0]);
+					if (CFile::doesFileExist(strFilePath2))
+					{
+						strFilePath = strFilePath2;
+					}
+					else
+					{
+						strFilePath2 = CPath::replaceFileExtensionWithCase(strFilePath, mapOppositeExtensions[strExtUpper][1]);
+						if (CFile::doesFileExist(strFilePath2))
+						{
+							strFilePath = strFilePath2;
+						}
+						else
+						{
+							break;
+						}
+					}
+
+					strFileContent = CFile::getFileContent(strFilePath);
+					strExtUpper = CString2::toUpperCase(CPath::getFileExtension(strFilePath));
+					bFileIsHeaderFile = strExtUpper == "H" || strExtUpper == "HPP";
 				}
 
-				if (CString2::isIn(strSecondFileContent, strFileNameNoExt, true, uiSearchStartIndex))
-				{
-					bFoundInAFilePair = true;
-				}
-
-				if (!bFoundInAFilePair)
+				if (!bIncludeIsUsed)
 				{
 					mapRedundantIncludes[strFilePath].push_back(strFileLineClean);
+				}
+
+				if (uiHitCount > 1)
+				{
+					string strFoundInFilesText;
+					if (mapFilesHitFound[0] && mapFilesHitFound[1])
+						strFoundInFilesText = "header and source files";
+					else if (mapFilesHitFound[0] && bFile1IsHeaderFile)
+						strFoundInFilesText = "header file";
+					else if (mapFilesHitFound[1] && !bFile1IsHeaderFile)
+						strFoundInFilesText = "header file";
+					else
+						strFoundInFilesText = "source file";
+
+					if (mapDuplicateIncludes.count(strFilePath) == 0)
+					{
+						mapDuplicateIncludes[strFilePath].push_back(strFileLineClean + " [" + CString2::toString(uiHitCount) + " hits, in " + strFoundInFilesText + "]");
+					}
 				}
 			}
 		}
 	}
 
-	cout << "Redundant Include Files:\n\n";
+
+	cout << "------------------------\n";
+	cout << "Redundant Include Files:\n";
+	cout << "------------------------\n\n";
+	if (mapRedundantIncludes.size() == 0)
+	{
+		cout << "None found!" << "\n\n";
+	}
 	for (auto& it : mapRedundantIncludes)
 	{
 		cout << it.first.c_str() << "\n\n";
@@ -171,5 +263,26 @@ void detectRedundantIncludes(void)
 		}
 		cout << "\n\n\n\n";
 	}
-	cout << "Done.\n\n";
+
+
+	cout << "-----------------------\n";
+	cout << "Duplicate Include Files:\n";
+	cout << "-----------------------\n\n";
+	if (mapDuplicateIncludes.size() == 0)
+	{
+		cout << "None found!" << "\n\n";
+	}
+	for (auto& it : mapDuplicateIncludes)
+	{
+		cout << it.first.c_str() << "\n\n";
+		for (string& strIncludeLine : it.second)
+		{
+			cout << strIncludeLine.c_str() << "\n";
+		}
+		cout << "\n\n\n\n";
+	}
+
+	cout << "-----\n";
+	cout << "Done.\n";
+	cout << "-----\n\n";
 }
