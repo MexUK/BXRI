@@ -4,10 +4,11 @@
 #include <map>
 #include <iostream>
 #include <Windows.h>
-#include "Static/CFile.h"
-#include "Static/CStdVector.h"
-#include "Static/CString2.h"
-#include "Static/CPath.h"
+#include "nsbxcf.h"
+#include "Static/File.h"
+#include "Static/StdVector.h"
+#include "Static/String.h"
+#include "Static/Path.h"
 
 using namespace std;
 using namespace bxcf;
@@ -65,7 +66,7 @@ void detectRedundantIncludes(void)
 	{
 		cin.getline(szFolderPathIn, sizeof(szFolderPathIn));
 
-		if (CPath::isValidPath(string(szFolderPathIn)))
+		if (Path::isValidPath(string(szFolderPathIn)))
 		{
 			break;
 		}
@@ -78,7 +79,7 @@ void detectRedundantIncludes(void)
 	cout << "\n\n";
 
 	vector<string>
-		vecFilePaths = CFile::getFilePaths(szFolderPathIn, true, false, "h,hpp,c,cpp", true);
+		vecFilePaths = File::getFilePaths(szFolderPathIn, true, false, "h,hpp,c,cpp", true);
 	map<string, vector<string>>
 		mapRedundantIncludes,
 		mapDuplicateIncludes;
@@ -94,11 +95,11 @@ void detectRedundantIncludes(void)
 
 	for (string& strFilePath : vecFilePaths)
 	{
-		string strFileContent = CFile::getFileContent(strFilePath);
-		vector<string> vecFileLines = CString2::split(strFileContent, "\n");
+		string strFileContent = File::getTextFile(strFilePath);
+		vector<string> vecFileLines = String::split(strFileContent, "\n");
 		for (string& strFileLine : vecFileLines)
 		{
-			string strFileLineClean = CString2::trim(strFileLine);
+			string strFileLineClean = String::trim(strFileLine);
 			if (strFileLineClean.substr(0, 8) == "#include")
 			{
 				int32 iQuoteStartIndex, iQuoteEndIndex;
@@ -132,13 +133,13 @@ void detectRedundantIncludes(void)
 					continue;
 				}
 
-				string strFileName = CPath::getFileName(strIncludePath);
+				string strFileName = Path::getFileName(strIncludePath);
 				if (strFileName == "")
 				{
 					continue;
 				}
 
-				string strFileNameNoExt = CPath::removeFileExtension(strFileName);
+				string strFileNameNoExt = Path::removeFileExtension(strFileName);
 				if (strFileNameNoExt == "")
 				{
 					continue;
@@ -151,7 +152,7 @@ void detectRedundantIncludes(void)
 
 
 				string
-					strExtUpper = CString2::toUpperCase(CPath::getFileExtension(strFilePath));
+					strExtUpper = String::toUpperCase(Path::getFileExtension(strFilePath));
 				bool
 					bFileIsHeaderFile = strExtUpper == "H" || strExtUpper == "HPP",
 					bIncludeIsUsed = false,
@@ -184,12 +185,12 @@ void detectRedundantIncludes(void)
 						}
 					}
 
-					if (CString2::isIn(strFileContent, strFileNameNoExt, true, uiSearchStartIndex))
+					if (String::isIn(strFileContent, strFileNameNoExt, true, uiSearchStartIndex))
 					{
 						bIncludeIsUsed = true;
 					}
 
-					uint32 uiHitCountInFile = CString2::getHitCount(strFileContent, strIncludeLineClean, false, 0);
+					uint32 uiHitCountInFile = String::getHitCount(strFileContent, strIncludeLineClean, false, 0);
 					if (uiHitCountInFile > 0)
 					{
 						uiFileHitCount++;
@@ -197,15 +198,15 @@ void detectRedundantIncludes(void)
 						mapFilesHitFound[i] = true;
 					}
 
-					strFilePath2 = CPath::replaceFileExtensionWithCase(strFilePath, mapOppositeExtensions[strExtUpper][0]);
-					if (CFile::doesFileExist(strFilePath2))
+					strFilePath2 = Path::replaceFileExtensionWithCase(strFilePath, mapOppositeExtensions[strExtUpper][0]);
+					if (File::doesFileExist(strFilePath2))
 					{
 						strFilePath = strFilePath2;
 					}
 					else
 					{
-						strFilePath2 = CPath::replaceFileExtensionWithCase(strFilePath, mapOppositeExtensions[strExtUpper][1]);
-						if (CFile::doesFileExist(strFilePath2))
+						strFilePath2 = Path::replaceFileExtensionWithCase(strFilePath, mapOppositeExtensions[strExtUpper][1]);
+						if (File::doesFileExist(strFilePath2))
 						{
 							strFilePath = strFilePath2;
 						}
@@ -215,8 +216,8 @@ void detectRedundantIncludes(void)
 						}
 					}
 
-					strFileContent = CFile::getFileContent(strFilePath);
-					strExtUpper = CString2::toUpperCase(CPath::getFileExtension(strFilePath));
+					strFileContent = File::getTextFile(strFilePath);
+					strExtUpper = String::toUpperCase(Path::getFileExtension(strFilePath));
 					bFileIsHeaderFile = strExtUpper == "H" || strExtUpper == "HPP";
 				}
 
@@ -239,7 +240,7 @@ void detectRedundantIncludes(void)
 
 					if (mapDuplicateIncludes.count(strFilePath) == 0)
 					{
-						mapDuplicateIncludes[strFilePath].push_back(strFileLineClean + " [" + CString2::toString(uiHitCount) + " hits, in " + strFoundInFilesText + "]");
+						mapDuplicateIncludes[strFilePath].push_back(strFileLineClean + " [" + String::toString(uiHitCount) + " hits, in " + strFoundInFilesText + "]");
 					}
 				}
 			}
