@@ -46,6 +46,10 @@ void detectRedundantIncludes(void)
 
 	bSkipAngleBracketIncludes = true; // e.g. Skip <Windows.h> instead of "Windows.h"
 	mapSkipIncludes["Type/Types.h"] = true;
+	mapSkipIncludes["nsbxcf.h"] = true;
+	mapSkipIncludes["nsbxgx.h"] = true;
+	mapSkipIncludes["nsbxgi.h"] = true;
+	mapSkipIncludes["nsimgf.h"] = true;
 
 	// --------------- settings end ---------------
 
