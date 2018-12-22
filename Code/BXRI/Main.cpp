@@ -45,11 +45,14 @@ void detectRedundantIncludes(void)
 	// -------------- settings start --------------
 
 	bSkipAngleBracketIncludes = true; // e.g. Skip <Windows.h> instead of "Windows.h"
-	mapSkipIncludes["Type/Types.h"] = true;
+
 	mapSkipIncludes["nsbxcf.h"] = true;
 	mapSkipIncludes["nsbxgx.h"] = true;
 	mapSkipIncludes["nsbxgi.h"] = true;
 	mapSkipIncludes["nsimgf.h"] = true;
+	mapSkipIncludes["bx.h"] = true;
+	mapSkipIncludes["Types.h"] = true;
+	mapSkipIncludes["Includes.h"] = true;
 
 	// --------------- settings end ---------------
 
@@ -111,7 +114,11 @@ void detectRedundantIncludes(void)
 				if (iQuoteStartIndex == -1)
 				{
 					iQuoteStartIndex = strFileLineClean.find('<', 0);
-					if (iQuoteStartIndex != -1)
+					if (iQuoteStartIndex == -1)
+					{
+						continue;
+					}
+					else
 					{
 						if (bSkipAngleBracketIncludes)
 						{
