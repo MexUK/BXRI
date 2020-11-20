@@ -4,14 +4,15 @@
 #include <map>
 #include <iostream>
 #include <Windows.h>
-#include "nsbxcf.h"
+#include "mx.h"
 #include "Static/File.h"
+#include "Static/Folder.h"
 #include "Static/StdVector.h"
 #include "Static/String.h"
 #include "Static/Path.h"
 
 using namespace std;
-using namespace bxcf;
+using namespace mx;
 
 int main(void)
 {
@@ -58,8 +59,8 @@ void detectRedundantIncludes(void)
 
 	cout << "\n";
 
-	cout << "-------------------------- BXRI --------------------------\n";
-	cout << "-------------------------- BX Redundant Include Checker --\n";
+	cout << "-------------------------- MXRI --------------------------\n";
+	cout << "-------------------------- MX Redundant Include Checker --\n";
 	cout << "-------------------------- by Mex ------------------------\n\n";
 
 	cout << "This tool checks for:\n";
@@ -73,7 +74,7 @@ void detectRedundantIncludes(void)
 	{
 		cin.getline(szFolderPathIn, sizeof(szFolderPathIn));
 
-		if (Path::isValidPath(string(szFolderPathIn)))
+		if (Folder::isFolder(string(szFolderPathIn)))
 		{
 			break;
 		}
@@ -86,7 +87,7 @@ void detectRedundantIncludes(void)
 	cout << "\n\n";
 
 	vector<string>
-		vecFilePaths = File::getFilePaths(szFolderPathIn, true, false, "h,hpp,c,cpp", true);
+		vecFilePaths = Folder::getFilePaths(string(szFolderPathIn), true, "h,hpp,c,cpp");
 	map<string, vector<string>>
 		mapRedundantIncludes,
 		mapDuplicateIncludes;
@@ -102,8 +103,8 @@ void detectRedundantIncludes(void)
 
 	for (string& strFilePath : vecFilePaths)
 	{
-		string strFileContent = File::getTextFile(strFilePath);
-		vector<string> vecFileLines = String::split(strFileContent, "\n");
+		string strFileContent = File::getText(strFilePath);
+		vector<string> vecFileLines = String::split(strFileContent, string("\n"));
 		for (string& strFileLine : vecFileLines)
 		{
 			string strFileLineClean = String::trim(strFileLine);
@@ -150,7 +151,7 @@ void detectRedundantIncludes(void)
 					continue;
 				}
 
-				string strFileNameNoExt = Path::removeFileExtension(strFileName);
+				string strFileNameNoExt = Path::removeExt(strFileName);
 				if (strFileNameNoExt == "")
 				{
 					continue;
@@ -163,7 +164,7 @@ void detectRedundantIncludes(void)
 
 
 				string
-					strExtUpper = String::toUpperCase(Path::getFileExtension(strFilePath));
+					strExtUpper = String::upper(Path::ext(strFilePath));
 				bool
 					bFileIsHeaderFile = strExtUpper == "H" || strExtUpper == "HPP",
 					bIncludeIsUsed = false,
@@ -209,15 +210,15 @@ void detectRedundantIncludes(void)
 						mapFilesHitFound[i] = true;
 					}
 
-					strFilePath2 = Path::replaceFileExtensionWithCase(strFilePath, mapOppositeExtensions[strExtUpper][0]);
-					if (File::doesFileExist(strFilePath2))
+					strFilePath2 = Path::setExtWithCase(strFilePath, mapOppositeExtensions[strExtUpper][0]);
+					if (File::isFile(strFilePath2))
 					{
 						strFilePath = strFilePath2;
 					}
 					else
 					{
-						strFilePath2 = Path::replaceFileExtensionWithCase(strFilePath, mapOppositeExtensions[strExtUpper][1]);
-						if (File::doesFileExist(strFilePath2))
+						strFilePath2 = Path::setExtWithCase(strFilePath, mapOppositeExtensions[strExtUpper][1]);
+						if (File::isFile(strFilePath2))
 						{
 							strFilePath = strFilePath2;
 						}
@@ -227,8 +228,8 @@ void detectRedundantIncludes(void)
 						}
 					}
 
-					strFileContent = File::getTextFile(strFilePath);
-					strExtUpper = String::toUpperCase(Path::getFileExtension(strFilePath));
+					strFileContent = File::getText(strFilePath);
+					strExtUpper = String::upper(Path::ext(strFilePath));
 					bFileIsHeaderFile = strExtUpper == "H" || strExtUpper == "HPP";
 				}
 
