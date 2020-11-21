@@ -6,7 +6,7 @@
 #include <Windows.h>
 #include "mx.h"
 #include "Static/File.h"
-#include "Static/Folder.h"
+#include "Static/Dir.h"
 #include "Static/StdVector.h"
 #include "Static/String.h"
 #include "Static/Path.h"
@@ -74,7 +74,7 @@ void detectRedundantIncludes(void)
 	{
 		cin.getline(szFolderPathIn, sizeof(szFolderPathIn));
 
-		if (Folder::isFolder(string(szFolderPathIn)))
+		if (Dir::isFolder(string(szFolderPathIn)))
 		{
 			break;
 		}
@@ -87,7 +87,7 @@ void detectRedundantIncludes(void)
 	cout << "\n\n";
 
 	vector<string>
-		vecFilePaths = Folder::getFilePaths(string(szFolderPathIn), true, "h,hpp,c,cpp");
+		vecFilePaths = Dir::getFilePaths(string(szFolderPathIn), true, "h,hpp,c,cpp");
 	map<string, vector<string>>
 		mapRedundantIncludes,
 		mapDuplicateIncludes;
